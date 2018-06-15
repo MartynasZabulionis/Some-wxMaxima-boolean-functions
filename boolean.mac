@@ -1,0 +1,122 @@
+/* Define boolean implication */
+"->"(q, p) := not q or p;
+nary("->")$
+
+/* Define boolean equality */
+"<->"(q, p) := (q and p) or (not q and not p);
+nary("<->")$
+
+/* Define boolean exclusive or */
+"xor"(q, p) := (q and not p) or (not q and p);
+nary("xor")$
+
+/* ----------------- Functions for boolean formulas ----------------- */
+
+load(eigen)$
+
+/* Makes a list of all possible combinations of values of all variables.
+	Params: n is number of variables
+	Returns a list*/
+	
+bool_make_list(n) := block([l: [], k],
+    
+    for i: 1 thru n do push({false, true}, l),
+    k: funmake(cartesian_product, l),
+    sort(listify(ev(k)), 'ordergreatp)
+)$
+
+
+
+/* Checks if boolean formula is identically true or false.
+	Params: f is formula, val is true or false
+	Returns true or false */
+	
+bool_is_identically(f, val) := block([ff, lf],
+    
+    define(funmake(ff, listofvars(f)), f),
+    
+    lf: map(lambda([x], funmake(ff, x)), bool_make_list(length(listofvars(f)))),
+    every(lambda([x], is(x = val)), setify(ev(lf)))
+)$
+
+
+/* Checks if two boolean formulas are both identically true or false.
+	Params: f is the first formula, gg is the second formula.
+	Returns true or false */
+	
+bool_identically_false_true(f, g) := block([ff, gg, lf, lg],
+    
+    define(funmake(ff, listofvars(f)), f),
+    define(funmake(gg, listofvars(g)), g),
+    
+    lf: map(lambda([x], funmake(ff, x)), bool_make_list(length(listofvars(f)))),
+    lg: map(lambda([x], funmake(gg, x)), bool_make_list(length(listofvars(g)))),
+    
+    return (is(length(setify(append(ev(lf), ev(lg)))) = 1))
+)$
+
+/* Checks if two boolean formulas are equivalent.
+	Params: f is the first formula, g is the second formula.
+	Returns true or false */
+	
+bool_equivalent_formulas(f, g) := block([l, ff, gg, lf, lg, vmaxl, main_f, val],
+    
+    if ((f = true or f = false) and (g = true or g = false)) then
+        return (is(f = g)),
+    
+    if ((f = true or f = false) or (g = true or g = false)) then
+    (
+        if (f = true or f = false) then
+        (
+            main_f: g, val: f
+        )
+        else
+        (
+            main_f: f, val: g
+        ),
+        return (bool_is_identically(main_f, val))
+    ),
+    if (bool_identically_false_true(f, g) = true) then
+        return (true),
+    
+    vmaxl: if length(listofvars(f)) >= length(listofvars(g)) then listofvars(f) else listofvars(g),
+    define(funmake(ff, vmaxl), f),
+    define(funmake(gg, vmaxl), g),
+    
+    l: bool_make_list(max(length(listofvars(f)), length(listofvars(g)))),
+    
+    lf: map(lambda([x], funmake(ff, x)), l),
+    lg: map(lambda([x], funmake(gg, x)), l),
+    
+    return (is(ev(lf) = ev(lg)))
+    
+)$
+
+/* Makes a truth table (matrix) based on formula.
+	Params: formula is formula.
+	Returns matrix */
+
+bool_make_truth_table(formula) := block([eq_list, func, flist, M],
+    
+    if (formula = true) then
+        return ("Formula is identically true"),
+    
+    if (formula = false) then
+        return ("Formula is identically false"),
+    
+    eq_list: bool_make_list(length(listofvars(formula))),
+    
+    define(funmake(func, listofvars(formula)), formula),
+    
+    flist: map(lambda([x], funmake(func, x)), eq_list),
+    eq_list: subst([true = 1, false = 0], eq_list),
+    
+    flist: subst([true = 1, false = 0], ev(flist)),
+    
+    M: matrix(flatten([formula, |, listofvars(formula)])),
+    for i: 1 thru length(eq_list) do
+        M: addrow(M, flatten([flist[i], |, eq_list[i]])),
+    
+    return(M)
+)$
+
